@@ -74,7 +74,7 @@ def modelsFeatureSelection(x,y,testPercent):
     bestFeaturesMask = [0]*5
 
 
-    for k in range(1, x.shape[1]):
+    for k in range(1, x.shape[1]+1):
         skb = SelectKBest(chi2, k=k)
         skb.fit(x, y)
         X_new = skb.transform(x)
@@ -137,9 +137,7 @@ if __name__ == '__main__':
         print(modelsWithFeatures)
         print(bestNumberOfFeatures)
 
-        featuresSelected = pd.dataFrame(bestFeaturesMask)
-        disDF(featuresSelected)
-
-
+        featuresSelected = pd.DataFrame(bestFeaturesMask, columns = ['Age', 'Sex','ChestPainType', 'RestingBP', 'Cholesterol','FastingBS', 'RestingECG','MaxHR', 'ExerciseAngina', 'Oldpeak','ST_Slope'])
+        disDF(featuresSelected.transpose())
 
         # plotModels()
