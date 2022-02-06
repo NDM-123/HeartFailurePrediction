@@ -1,26 +1,25 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import accuracy_score, f1_score,confusion_matrix, recall_score, precision_score, classification_report
+from sklearn.metrics import accuracy_score
 from sklearn import preprocessing
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
+from IPython.display import display
+import seaborn as sns
+import numpy
 import warnings
 warnings.filterwarnings("ignore")
 
-# class Model:
-#     def __init__(self, model):
-#         self.model = model
-#         self.numFeatures = 0
-#         self.accuracy = 0
 
-
+def plotFeatures(df):
+    sns.pairplot(df)
+    # sns.pairplot(df, hue="HeartDisease" )
 
 def modelPrediction(model,X_train,X_test,y_train, y_test):
     model.fit(X_train, y_train)
@@ -40,7 +39,9 @@ def modelPrediction(model,X_train,X_test,y_train, y_test):
 
 def data_process():
     df = pd.read_csv(r'heart.csv')
-    df.head()
+
+    # optional
+    plotFeatures(df)
 
     # label encoding
     label_encoder = preprocessing.LabelEncoder()
@@ -52,56 +53,77 @@ def data_process():
 
     return x, y
 
+def models(X_train, X_test, y_train, y_test):
+    models = []
+
+    models.append(modelPrediction(DecisionTreeClassifier(max_depth=6), X_train, X_test, y_train, y_test))
+    # n_estimators=1 == Decision tree
+    models.append(modelPrediction(AdaBoostClassifier(n_estimators=5, base_estimator=DecisionTreeClassifier(max_depth=5), learning_rate=0.001),X_train, X_test, y_train, y_test))
+    models.append(modelPrediction(MLPClassifier(hidden_layer_sizes=16, learning_rate_init=0.01, random_state=0, solver='adam'), X_train, X_test, y_train, y_test))
+    models.append(modelPrediction(KNeighborsClassifier(n_neighbors=8, algorithm='brute'), X_train, X_test, y_train, y_test))
+    models.append(modelPrediction(SVC(), X_train, X_test, y_train, y_test))
+    return models
+
+def modelsFeatureSelection(x,y,testPercent):
+    #   feature selection
+    bestTestAccuracy = [0,0,0,0,0]
+    bestNumberOfFeatures = [0,0,0,0,0]
+
+    for k in range(1, x.shape[1]):
+        # answers = []
+        skb = SelectKBest(chi2, k=k)
+        skb.fit(x, y)
+        X_new = skb.transform(x)
+        X_train, X_test, y_train, y_test = train_test_split(X_new, y, test_size=testPercent, random_state=0)
+
+
+        answers = models(X_train, X_test, y_train, y_test)
+
+        for i in range(len(answers)):
+                if answers[i] > bestTestAccuracy[i]:
+                    bestTestAccuracy[i] = answers[i]
+                    bestNumberOfFeatures[i] = k
+
+
+    return bestTestAccuracy,bestNumberOfFeatures
+
+
+
+
 if __name__ == '__main__':
 
         x, y = data_process()
 
-        models = []
-
-        X_train, X_test, y_train, y_test = train_test_split(x, y,test_size=0.2,random_state=0)
-
-        # Before feature selection
-        # DT = modelPrediction(DecisionTreeClassifier(max_depth=5),X_train, X_test, y_train, y_test)
-        AB = modelPrediction(AdaBoostClassifier(),X_train, X_test, y_train, y_test)
-        # AB = modelPrediction(AdaBoostClassifier(DecisionTreeClassifier(max_depth=5)),X_train, X_test, y_train, y_test)
-        # NN = modelPrediction(MLPClassifier(solver='adam'),X_train, X_test, y_train, y_test)
-        # KNN = modelPrediction(KNeighborsClassifier(),X_train, X_test, y_train, y_test)
-        # SVM = modelPrediction(SVC(),X_train, X_test, y_train, y_test)
-
-        models.append(modelPrediction(DecisionTreeClassifier(max_depth=5),X_train, X_test, y_train, y_test))
-        # models.append(modelPrediction(AdaBoostClassifier(),X_train, X_test, y_train, y_test))
-        models.append(modelPrediction(AdaBoostClassifier(DecisionTreeClassifier(max_depth=5)),X_train, X_test, y_train, y_test))
-        models.append(modelPrediction(MLPClassifier(solver='adam'),X_train, X_test, y_train, y_test))
-        models.append(modelPrediction(KNeighborsClassifier(),X_train, X_test, y_train, y_test))
-        models.append(modelPrediction(SVC(),X_train, X_test, y_train, y_test))
-
-        #   feature selection
-        bestTestAccuracy = [0,0,0,0,0]
-        bestNumberOfFeatures = [0,0,0,0,0]
+        bestOfModels = []
 
 
-        for k in range(1,x.shape[1]):
-            answers = []
-            skb = SelectKBest(chi2, k=k)
-            skb.fit(x, y)
-            X_new = skb.transform(x)
-            X_train, X_test, y_train, y_test = train_test_split(X_new, y,test_size=0.2,random_state=0)
+
+        # base model
+        X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=0)
+        modelsWithFeatures = models(X_train, X_test, y_train, y_test)
 
 
-            print("After feature selection, num of features:" + str(k))
-            # After feature selection
-            answers.append(modelPrediction(DecisionTreeClassifier(max_depth=5),X_train, X_test, y_train, y_test))
-            answers.append(modelPrediction(AdaBoostClassifier(DecisionTreeClassifier(max_depth=5)),X_train, X_test, y_train, y_test))
-            answers.append(modelPrediction(MLPClassifier(hidden_layer_sizes=10, learning_rate_init=0.01, random_state=0,solver='adam'),X_train, X_test, y_train, y_test))
-            answers.append(modelPrediction(KNeighborsClassifier(n_neighbors=8),X_train, X_test, y_train, y_test))
-            answers.append(modelPrediction(SVC(),X_train, X_test, y_train, y_test))
-            # answers.append(modelPrediction(SVC(C=10, gamma=0.5, kernel='poly', random_state=0, probability=True),X_train, X_test, y_train, y_test))
+        for j in [x * 0.1 for x in range(1, 10)]:
+            X_train, X_test, y_train, y_test = train_test_split(x, y,test_size=j,random_state=0)
 
-            for i in range(len(answers)):
-                    if answers[i] > bestTestAccuracy[i]:
-                        bestTestAccuracy[i] = answers[i]
-                        bestNumberOfFeatures[i] = k
+            bestOfModels.append(models(X_train, X_test, y_train, y_test))
+
+        best = pd.DataFrame(bestOfModels)
+
+
+        bestTestAccuracy, bestNumberOfFeatures = modelsFeatureSelection(x, y, 0.2)
+
+        # printing test size from 0.1-1
+        display(best)
+
+        best.describe()
+
+        print(bestOfModels)
+
         # how come some features without feature selection get same score? KNN...
-        print(models)
+        print("Decision Tree:\t\t Adaboost:\t\t\tMLP:\t\t\t\t KNN:\t\t\t\tSVM:")
+        print(modelsWithFeatures)
         print(bestTestAccuracy)
         print(bestNumberOfFeatures)
+
+        # plotModels()
